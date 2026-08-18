@@ -1,0 +1,63 @@
+name: reliefnet
+description: Crowd-Sourced Disaster Relief Coordination Platform
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.11.1 <4.0.0'
+  flutter: '>=3.32.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State Management ─────────────────────────────────────
+  provider: ^6.1.2
+
+  # ── Navigation ───────────────────────────────────────────
+  go_router: ^14.8.0
+
+  # ── Maps & Location (UI scaffold only — no real GPS yet) ─
+  google_maps_flutter: ^2.10.0
+  geolocator: ^13.0.0
+  geocoding: ^3.0.0
+
+  # ── Camera & Photo (UI scaffold only) ────────────────────
+  image_picker: ^1.1.2
+  exif: ^3.3.0
+
+  # ── QR Code ──────────────────────────────────────────────
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.2.0
+
+  # ── UI Utilities ─────────────────────────────────────────
+  shimmer: ^3.0.0
+  fl_chart: ^1.0.0
+  cached_network_image: ^3.4.1
+  flutter_local_notifications: ^19.3.0
+
+  # ── Utilities ────────────────────────────────────────────
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  logger: ^2.4.0
+  connectivity_plus: ^6.1.1
+  permission_handler: ^12.0.0+1
+
+  # ── Icons ────────────────────────────────────────────────
+  cupertino_icons: ^1.0.8
+
+  #Deep link to Google Maps for directions
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mockito: ^5.4.4
+  build_runner: ^2.4.13
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/

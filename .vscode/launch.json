@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "reliefnet",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "reliefnet (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "reliefnet (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        // --- Individual configurations for your specific emulators ---
+        {
+            "name": "reliefnet (Emulator 5554)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "emulator-5554"
+        },
+        {
+            "name": "reliefnet (Emulator 5556)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "emulator-5556"
+        }
+    ],
+    // --- The magic setup that links them together ---
+    "compounds": [
+        {
+            "name": "reliefnet (Dual Emulators)",
+            "configurations": [
+                "reliefnet (Emulator 5554)",
+                "reliefnet (Emulator 5556)"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,142 @@
+// firestore.rules
+//
+// Scope note: auth, user profiles, centers, relief requests, and center
+// inventory now run on Firebase (FirebaseAuthService, FirebaseUserService,
+// FirebaseCenterService, FirebaseRequestService, FirebaseInventoryService).
+// Everything else this app might eventually use (tasks, parcels, receipts,
+// blueprint, admin, notifications) is still served by in-memory Mock
+// services, not Firestore — there's nothing to write rules for yet on that
+// front.
+//
+// [Unverified] — written by hand against the rules syntax, not tested
+// against a running project from here.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /otps/{phone} {
+      allow read, write: if false;
+    }
+
+    // users/{uid} — added alongside FirebaseUserService.
+    //
+    // - Anyone signed in can READ any profile. This matches
+    //   MockUserService's existing behavior exactly (it has no access
+    //   restriction at all — any part of the app can look up any user by
+    //   uid or phone), carried forward rather than newly introduced. It's
+    //   needed for things like a coordinator resolving a sub-coordinator's
+    //   display name, or a victim seeing their assigned volunteer's name.
+    //   [Speculation] If you want tighter privacy later (e.g. hide phone
+    //   numbers from other victims), that needs a data-model split
+    //   (public profile vs private fields), not just a rules change — flag
+    //   it if you want that.
+    // - A user can only WRITE their own document — covers self-registration
+    //   during Role Select (createUser) and any future self-service
+    //   profile edits.
+    // - Only an account with the custom claim `admin: true` can write to
+    //   ANY user's document — this is what approveVolunteer/rejectVolunteer
+    //   need, since those write to a *different* user's doc than the
+    //   admin's own. See scripts/seedAdmin.js for how that claim gets set;
+    //   it is never set by anything client-side.
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                     (request.auth.uid == uid || request.auth.token.admin == true);
+    }
+
+    // centers/{centerId} — added alongside FirebaseCenterService.
+    //
+    // - READ is public, no auth required at all — unlike every other
+    //   collection here. This matches the app's own role model directly:
+    //   UserRole.public is explicitly "no account, can view the map", and
+    //   PublicMapScreen shows centers to exactly that role. Locking centers
+    //   behind auth would break the one screen this app deliberately
+    //   built to work without signing in.
+    // - CREATE: any signed-in user — matches RegisterCenterScreen, which
+    //   any volunteer can reach. [Speculation] MockCenterService enforces
+    //   no restriction here either (any role could call registerCenter),
+    //   so this isn't a new restriction, just carrying the existing
+    //   permissiveness forward. Tightening this to "verified volunteers
+    //   only" is possible but needs a cross-collection lookup against
+    //   users/{uid}.isVerified, which costs an extra read per write —
+    //   flag it if you want that added.
+    // - UPDATE (including addSubCoordinator/removeSubCoordinator, which
+    //   both go through this same rule): the center's own main or sub
+    //   coordinator, or an admin.
+    match /centers/{centerId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+                      (request.auth.uid == resource.data.mainCoordinatorUid ||
+                       request.auth.uid in resource.data.subCoordinatorUids ||
+                       request.auth.token.admin == true);
+    }
+
+    // relief_requests/{requestId} — added alongside FirebaseRequestService.
+    //
+    // - READ: any signed-in user. Needed for getPendingRequests (any
+    //   volunteer needs to see every pending request on the map) and
+    //   getFlaggedRequests (admin review queue), not just the request's
+    //   own victim. [Speculation] Same "carried-forward permissiveness"
+    //   trade-off as users/{uid} — tighten later if request-level privacy
+    //   between victims/volunteers becomes a requirement.
+    // - CREATE: only as your own request (victimUid must equal the
+    //   caller's uid) — matches SubmitRequestScreen, which always creates
+    //   with the signed-in victim's own uid.
+    // - UPDATE: three cases, matching every write MockRequestService
+    //   actually performs —
+    //     1. the request's own victim (cancelRequest),
+    //     2. the currently-assigned volunteer (progressing
+    //        accepted → collecting → delivering → completed), or
+    //     3. ANY signed-in user while status is still 'pending' — this is
+    //        deliberately broader than "assignedVolunteerUid == auth.uid"
+    //        because on first acceptance assignedVolunteerUid is still
+    //        null (nobody's claimed it yet); this is also what lets an
+    //        admin call approvePhotoReview on a flagged-but-still-pending
+    //        request.
+    //   [Speculation] Case 3 means any signed-in user (not just
+    //   volunteers) could claim a pending request — there's no custom
+    //   claim distinguishing volunteer from victim yet. Tightening this
+    //   needs either a volunteer custom claim or a get() lookup against
+    //   users/{uid}.role (extra read cost per write) — flag it if you
+    //   want that added.
+    match /relief_requests/{requestId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+                      request.resource.data.victimUid == request.auth.uid;
+      allow update: if request.auth != null &&
+                      (request.auth.uid == resource.data.victimUid ||
+                       request.auth.uid == resource.data.assignedVolunteerUid ||
+                       resource.data.status == 'pending' ||
+                       request.auth.token.admin == true);
+    }
+
+    // centers/{centerId}/inventory_items/{itemId} — added alongside
+    // FirebaseInventoryService.
+    //
+    // - READ: any signed-in user — inventory isn't shown on the public
+    //   map (unlike centers/{centerId} itself), so this doesn't need to be
+    //   public, just not victim/volunteer-specific.
+    // - WRITE (addStock/deductStock/initializeInventory all go through
+    //   this): the parent center's own main or sub coordinator, or an
+    //   admin — same check as centers/{centerId}'s own update rule, via a
+    //   get() lookup on the parent center doc. [Speculation] That get()
+    //   costs an extra document read on every inventory write; acceptable
+    //   at this app's scale, but worth knowing if you're watching
+    //   Firestore read costs later.
+    match /centers/{centerId}/inventory_items/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                     (get(/databases/$(database)/documents/centers/$(centerId)).data.mainCoordinatorUid == request.auth.uid ||
+                      request.auth.uid in get(/databases/$(database)/documents/centers/$(centerId)).data.subCoordinatorUids ||
+                      request.auth.token.admin == true);
+    }
+
+    // Default deny for anything not explicitly listed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

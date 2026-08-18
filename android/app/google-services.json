@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "165720386337",
+    "project_id": "reliefnet-app-c42ee",
+    "storage_bucket": "reliefnet-app-c42ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:165720386337:android:31fa6ae227f16b2ce92c60",
+        "android_client_info": {
+          "package_name": "com.reliefnet.reliefnet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoRbKFt8TDOWH5AY3SudUto--f19Gi0rY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
